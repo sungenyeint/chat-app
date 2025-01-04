@@ -3,8 +3,8 @@ let socket = require('socket.io');
 
 let app = express();
 
-let server = app.listen(4000, () => {
-  console.log('Server is running on port 4000')
+let server = app.listen(3000, () => {
+  console.log('Server is running on port 3000')
 });
 
 app.get('/', (req, res) => {
