@@ -3,182 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <title>Chat App</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script
         src="https://code.jquery.com/jquery-3.7.1.js"
         integrity="sha256-eKhayi8LEQwp4NKxN+CfCh+3qOVUtJn3QNZ0TciWLP4="
         crossorigin="anonymous"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f0f2f5;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .chat-container {
-            width: 100%;
-            max-width: 400px;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        .chat-header {
-            padding: 20px;
-            background: #075e54;
-            color: white;
-            border-radius: 10px 10px 0 0;
-        }
-
-        .chat-messages {
-            height: 400px;
-            padding: 20px;
-            overflow-y: auto;
-        }
-
-        .message {
-            margin-bottom: 10px;
-            max-width: 85%;
-        }
-
-        .message p {
-            padding: 10px 15px;
-            border-radius: 15px;
-            margin-bottom: 5px;
-            font-size: 14px;
-        }
-
-        .message .username {
-            font-weight: bold;
-            margin-bottom: 5px;
-            display: block;
-        }
-
-        .message .time {
-            font-size: 12px;
-            color: #999;
-        }
-
-        .received {
-            float: left;
-            width: 100%;
-        }
-
-        .received p {
-            background: #e9ecef;
-        }
-
-        .sent {
-            float: right;
-            min-width: 51%;
-        }
-
-        .sent p {
-            background: #dcf8c6;
-        }
-
-        .chat-input {
-            padding: 20px;
-            border-top: 1px solid #eee;
-            display: flex;
-            gap: 10px;
-        }
-
-        .chat-input input {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 20px;
-            outline: none;
-        }
-
-        .chat-input button {
-            padding: 10px 20px;
-            background: #075e54;
-            color: white;
-            border: none;
-            border-radius: 20px;
-            cursor: pointer;
-        }
-
-        .chat-input .hide-button {
-            background-color: #a9a9a9;
-        }
-
-        .chat-input .hide-button:hover {
-            background-color: #a9a9a9!important;
-        }
-
-        .chat-input button:hover {
-            background: #128c7e;
-        }
-
-        /* Clear float */
-        .chat-messages::after {
-            content: '';
-            clear: both;
-            display: table;
-        }
-
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="chat-container">
         <div class="chat-header">
-            <h2>Chat</h2>
+            <h2>Chat Room</h2>
         </div>
-
-        <div class="chat-messages">
-        </div>
-
+        <div class="chat-messages" id="chat-messages"></div>
+        <div id="typing"></div>
         <div class="chat-input">
-            <input type="text" placeholder="Type a message..." id="message">
-            <button id="send" class="hide-button">Send</button>
+            <input type="text" id="message" placeholder="Type a message...">
+            <button id="send" disabled class="hide-button">Send</button>
         </div>
     </div>
-    <script>
 
-        // Function to check if a cookie exists
+    <script>
         function getCookie(name) {
             const value = `; ${document.cookie}`;
             const parts = value.split(`; ${name}=`);
             if (parts.length === 2) return parts.pop().split(';').shift();
-            return null;
         }
 
-        // Function to set a cookie
         function setCookie(name, value, days) {
             const date = new Date();
             date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
             const expires = `expires=${date.toUTCString()}`;
-            document.cookie = `${name}=${value}; ${expires}; path=/`;
+            document.cookie = `${name}=${value};${expires};path=/`;
         }
 
-        // Check if the cookie "username" exists
         let username = getCookie("username");
 
         if (!username) {
-            // Prompt the user to enter their name
             username = prompt("Please enter your name:");
             if (username) {
-                // Set the cookie with the entered value
-                setCookie("username", username, 7); // Cookie expires in 7 days
-            } else {
-                alert("No name entered. Cookie not set.");
+                setCookie("username", username, 30);
             }
         }
 
-        const socket = io("http://192.168.1.7:3000");
+        // Connect to Socket.IO server
+        const socket = io(window.location.origin, {
+            transports: ['websocket', 'polling']
+        });
 
         $('#send').on("click", () => {
             let data = {
@@ -187,13 +59,11 @@
             }
             socket.emit("chat", data);
             $('#message').val("");
-            $(this).prop('disabled', true);
-            $(this).addClass('hide-button');
         });
 
         $('#message').on("keypress", () => {
             socket.emit("typing", username);
-        })
+        });
 
         $('#message').on("keyup", () => {
             if ($('#message').val() !== "") {
@@ -208,21 +78,23 @@
         socket.on("chat", (data) => {
             $('#message').attr('placeholder', 'Type a message...');
             let className = username === data.name ? "sent" : "received";
-
-            $('.chat-messages').append(`<div class="message ${className}">
-                <p><span class="username">${data.name}</span>${data.message}</p>
-                <span class="time">${new Date().toLocaleTimeString()}</span>
-            </div>`);
-
-            $('.chat-messages').scrollTop($('.chat-messages')[0].scrollHeight); // Auto-scroll to the bottom of the chat messages
-            $('.typing').remove();
+            $('#chat-messages').append(`
+                <div class="message ${className}">
+                    <span class="name">${data.name}</span>
+                    <p>${data.message}</p>
+                    <span class="time">${new Date().toLocaleTimeString()}</span>
+                </div>
+            `);
+            $('#chat-messages').scrollTop($('#chat-messages')[0].scrollHeight);
+            $('#typing').html('');
+            $('#send').prop('disabled', true);
+            $('#send').addClass('hide-button');
         });
 
         socket.on("typing", (name) => {
-            $('#message').attr('placeholder', `${name} is typing...`);
-
+            $('#typing').html(`<p><em>${name} is typing...</em></p>`);
             setTimeout(() => {
-                $('#message').attr('placeholder', 'Type a message...');
+                $('#typing').html('');
             }, 3000);
         });
     </script>
