@@ -9,7 +9,7 @@
         src="https://code.jquery.com/jquery-3.7.1.js"
         integrity="sha256-eKhayi8LEQwp4NKxN+CfCh+3qOVUtJn3QNZ0TciWLP4="
         crossorigin="anonymous"></script>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="./style.css">
 </head>
 <body>
     <div class="chat-container">
@@ -58,7 +58,6 @@
                 message: $('#message').val(),
             }
             socket.emit("chat", data);
-            $('#message').val("");
         });
 
         $('#message').on("keypress", () => {
@@ -86,6 +85,8 @@
                 </div>
             `);
             $('#chat-messages').scrollTop($('#chat-messages')[0].scrollHeight);
+
+            $('#message').val("");
             $('#typing').html('');
             $('#send').prop('disabled', true);
             $('#send').addClass('hide-button');
